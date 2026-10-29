@@ -16,7 +16,7 @@ h1{font-size:1.35rem;margin:.2em 0}h2{font-size:1.1rem;margin:1em 0 .4em}
 .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px;margin:12px 0}
 .mute{color:var(--mute);font-size:.9rem}
 label{display:block;font-weight:600;margin:10px 0 4px}
-input[type=text],input[type=number]{width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:var(--bg);color:var(--ink);font:inherit}
+input[type=text],input[type=number],input[type=password]{width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:var(--bg);color:var(--ink);font:inherit}
 .row{display:flex;gap:12px;flex-wrap:wrap}.row>div{flex:1;min-width:130px}
 button{font:inherit;cursor:pointer;border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:10px;padding:9px 14px}
 button.pri{background:var(--acc);color:var(--on);border-color:var(--acc);font-weight:700}
@@ -40,7 +40,7 @@ button:disabled{opacity:.45;cursor:default}
 .rv{border-left:5px solid var(--line)}.rv.ok{border-left-color:var(--ok)}.rv.no{border-left-color:var(--bad)}
 textarea{width:100%;min-height:90px;border:1px solid var(--line);border-radius:10px;background:var(--bg);color:var(--ink);font:inherit;padding:8px}
 .warn{background:var(--badbg);border:1px solid var(--bad);border-radius:10px;padding:8px 12px;margin:8px 0}
-.hide{display:none!important}.stem,.opt{-webkit-user-select:none;user-select:none}.lv{color:var(--bad);font-size:.85rem;font-weight:700}
+.hide{display:none!important}.stem,.opt{-webkit-user-select:none;user-select:none}.tbl{width:100%;border-collapse:collapse;font-size:.92rem}.tbl th,.tbl td{border-bottom:1px solid var(--line);padding:6px 8px;text-align:left;white-space:nowrap}.tbl th{color:var(--mute);font-weight:600}.sc{overflow-x:auto}.pb{height:8px;min-width:80px;background:var(--line);border-radius:4px}.pb i{display:block;height:100%;background:var(--acc);border-radius:4px}.red{color:var(--bad);font-weight:700}.lv{color:var(--bad);font-size:.85rem;font-weight:700}
 </style></head><body>
 <main id="app"></main>
 <script>
@@ -72,12 +72,17 @@ function build(c){
  const ord=shuf(out,r),ps=shuf(ord.map((_,i)=>i%4),r);
  return ord.map((q,i)=>{const o=shuf([[q[4],0],[q[5],0],[q[6],0]],r);o.splice(ps[i],0,[q[3],1]);return{q,o}});
 }
+function newSid(){return Math.random().toString(36).slice(2,9)+Date.now().toString(36)}
+function post(o){return fetch(ENDPOINT,{method:"POST",mode:"no-cors",headers:{"Content-Type":"text/plain;charset=utf-8"},body:typeof o==="string"?o:JSON.stringify(o)})}
+function hb(st){if(!ENDPOINT||!S||S.fin||S.cfg.mode!=="x")return;post({type:"hb",sid:S.sid,name:S.name,cls:S.cls,lessons:fmtL(S.cfg.ls),code:S.cfg.m,n:S.items.length,answered:S.ans.filter(a=>a>=0).length,cur:S.i+1,leaves:S.lv||0,leaveSecs:S.lt||0,status:st,start:S.start}).catch(()=>{})}
+function jsonp(p){return new Promise((res,rej)=>{const cb="cb"+Date.now()+Math.floor(Math.random()*1e4),s=document.createElement("script"),tm=setTimeout(()=>{cl();rej(new Error("timeout"))},20000);function cl(){clearTimeout(tm);delete window[cb];s.remove()}window[cb]=d=>{cl();res(d)};s.onerror=()=>{cl();rej(new Error("net"))};s.src=ENDPOINT+"?"+new URLSearchParams(Object.assign({callback:cb},p));document.head.append(s)})}
+const z2=n=>String(n).padStart(2,"0"),fT=ms=>{const d=new Date(ms);return z2(d.getDate())+"/"+z2(d.getMonth()+1)+" "+z2(d.getHours())+":"+z2(d.getMinutes())};
 let S=null,tick=null;
 function tok(c){return"b"+fmtL(c.ls)+"_n"+c.n+"_t"+c.t+"_m"+c.m+"_"+c.mode+(c.u?"u":"")}
 function fromHash(){const m=location.hash.slice(1).match(/^b([\d~-]+)_n(\d+)_t(\d+)_m(\d+)(?:_([xp])(u?))?$/i);if(!m)return null;const ls=parseL(m[1]);return ls.length?{ls,n:Math.min(100,+m[2]),t:+m[3],m:+m[4],mode:(m[5]||"x").toLowerCase(),u:!!m[6]}:null}
 
 function setup(){
- clearInterval(tick);const fx=fromHash(),sv=LS.get();
+ clearInterval(tick);app.style.maxWidth="";app.style.padding="";const fx=fromHash(),sv=LS.get();
  const c=fx||{ls:Array.from({length:25},(_,i)=>i+1),n:20,t:20,m:100+Math.floor(Math.random()*900),mode:"x",u:false};
  let sel=new Set(c.ls),mode=c.mode,uniq=!!c.u;
  const name=h("input",{type:"text",placeholder:"Nguyễn Văn A",value:(sv&&sv.name)||""}),cls=h("input",{type:"text",placeholder:"Lớp / Mã TTS",value:(sv&&sv.cls)||""});
@@ -90,7 +95,7 @@ function setup(){
  function cfg(){return{ls:[...sel].sort((a,b)=>a-b),n:Math.max(5,Math.min(100,+nIn.value||20)),t:Math.max(0,+tIn.value||0),m:Math.max(1,+mIn.value||1),mode,u:uniq}}
  const start=()=>{const k=cfg();k.nm=k.u?name.value.trim():"";if(k.u&&!k.nm){err.textContent="Hãy nhập họ tên (đề được tạo riêng theo từng học sinh).";err.classList.remove("hide");return}if(!k.ls.length){err.textContent="Hãy chọn ít nhất một bài.";err.classList.remove("hide");return}
   const items=build(k);if(!items.length){err.textContent="Các bài đã chọn chưa có câu hỏi phù hợp.";err.classList.remove("hide");return}
-  S={cfg:k,name:name.value.trim(),cls:cls.value.trim(),ans:Array(items.length).fill(-1),i:0,start:Date.now(),done:false,lv:0,lt:0,items};save();quiz()};
+  S={cfg:k,name:name.value.trim(),cls:cls.value.trim(),ans:Array(items.length).fill(-1),i:0,start:Date.now(),done:false,lv:0,lt:0,sid:newSid(),items};save();quiz()};
  const adv=h("details",{class:fx?"hide":""},h("summary",{class:"mute"},"Dành cho giáo viên: tạo mã giao bài"),
   h("p",{class:"mute"},"Chọn bài, số câu, thời gian, mã đề ở trên rồi bấm nút bên dưới. Dán phần mã vào cuối link trang này gửi cho học sinh để các em có cùng một đề."),
   h("button",{onclick:()=>{link.value="#"+tok(cfg());link.classList.remove("hide")}},"Tạo mã giao bài"),link);
@@ -102,24 +107,26 @@ function setup(){
    h("h2",{},"2. Thiết lập"),h("div",{class:"row"},h("div",{},h("label",{},"Số câu"),nIn),h("div",{},h("label",{},"Thời gian (phút, 0 = không giới hạn)"),tIn),h("div",{},h("label",{},"Mã đề (cùng mã = cùng đề)"),mIn)),
    h("label",{},"Chế độ"),mseg,h("label",{style:"font-weight:400;margin-top:14px"},h("input",{type:"checkbox",checked:uniq,onchange:e=>{uniq=e.target.checked}})," Đề riêng cho từng học sinh (theo họ tên, chống quay cóp)")),
   err,h("button",{class:"pri",style:"width:100%;padding:14px",onclick:start},"Bắt đầu làm bài"),adv,
-  h("p",{class:"mute"},ENDPOINT?"Khi nộp bài, kết quả sẽ tự động gửi cho giáo viên. Trong lúc làm bài, việc rời khỏi trang sẽ được ghi lại.":"Kết quả hiển thị ngay sau khi nộp bài. Hãy bấm “Sao chép kết quả” để gửi cho giáo viên."));
+  h("p",{class:"mute"},ENDPOINT?"Khi nộp bài, kết quả sẽ tự động gửi cho giáo viên. Trong lúc làm bài, việc rời khỏi trang sẽ được ghi lại.":"Kết quả hiển thị ngay sau khi nộp bài. Hãy bấm “Sao chép kết quả” để gửi cho giáo viên."),
+  h("p",{class:"mute",style:"text-align:center"},h("a",{href:"#giaovien",style:"color:inherit",onclick:e=>{e.preventDefault();location.hash="giaovien";teacher()}},"Khu vực giáo viên")));
  paint();pm();
  if(sv&&!sv.done&&sv.cfg){const b=h("button",{class:"pri",onclick:()=>{S=Object.assign({},sv,{items:build(sv.cfg)});quiz()}},"Tiếp tục bài đang làm dở");app.insertBefore(h("div",{class:"card"},b),app.children[2])}
 }
-function save(){LS.set({cfg:S.cfg,name:S.name,cls:S.cls,ans:S.ans,i:S.i,start:S.start,done:S.done,lv:S.lv,lt:S.lt})}
+function save(){LS.set({cfg:S.cfg,name:S.name,cls:S.cls,ans:S.ans,i:S.i,start:S.start,done:S.done,lv:S.lv,lt:S.lt,sid:S.sid})}
 const fmt=s=>{s=Math.max(0,Math.round(s));return String(Math.floor(s/60)).padStart(2,"0")+":"+String(s%60).padStart(2,"0")};
 
 function quiz(){
  const c=S.cfg,N=S.items.length,end=c.t?S.start+c.t*60000:0;let warn=false;
  const tm=h("span",{class:"timer"}),sub=h("button",{class:"pri"},"Nộp bài"),body=h("div"),w=h("div",{class:"warn hide"});
  const lvEl=h("span",{class:"lv"}),bar=h("div",{class:"bar"},h("b",{},"Câu hỏi"),lvEl,tm,sub);
- S.lv=S.lv||0;S.lt=S.lt||0;let off=0;
+ S.lv=S.lv||0;S.lt=S.lt||0;S.sid=S.sid||newSid();S.fin=false;let off=0;
  const note=()=>{lvEl.textContent=S.lv?"⚠ Rời trang "+S.lv+" lần":""};
- const away=()=>{if(S.done||off)return;off=Date.now();S.lv++;save();note()};
- const back=()=>{if(!off)return;S.lt+=Math.round((Date.now()-off)/1000);off=0;save()};
+ const away=()=>{if(S.done||off)return;off=Date.now();S.lv++;save();note();hb("doing")};
+ const back=()=>{if(!off)return;S.lt+=Math.round((Date.now()-off)/1000);off=0;save();hb("doing")};
  const vis=()=>document.hidden?away():back(),nb=e=>e.preventDefault(),evs=["contextmenu","copy","cut","paste"];
  document.addEventListener("visibilitychange",vis);addEventListener("blur",away);addEventListener("focus",back);evs.forEach(v=>document.addEventListener(v,nb));note();
- const cleanup=()=>{back();document.removeEventListener("visibilitychange",vis);removeEventListener("blur",away);removeEventListener("focus",back);evs.forEach(v=>document.removeEventListener(v,nb))};
+ const hbT=setInterval(()=>hb("doing"),25000);hb("doing");
+ const cleanup=()=>{clearInterval(hbT);back();document.removeEventListener("visibilitychange",vis);removeEventListener("blur",away);removeEventListener("focus",back);evs.forEach(v=>document.removeEventListener(v,nb))};
  function clock(){const e=(Date.now()-S.start)/1000;if(end){const r=(end-Date.now())/1000;tm.textContent="⏱ "+fmt(r);tm.classList.toggle("low",r<60);if(r<=0)finish()}else tm.textContent="⏱ "+fmt(e)}
  function draw(){
   const it=S.items[S.i],q=it.q,pr=c.mode==="p"&&S.ans[S.i]>=0,ins=INS[q[1]]||[];
@@ -133,7 +140,7 @@ function quiz(){
    h("div",{class:"grid"},S.items.map((_,k)=>h("button",{class:(S.ans[k]>=0?"dn ":"")+(k===S.i?"cur":""),onclick:()=>go(k)},k+1))))}
  function go(k){S.i=k;save();draw();scrollTo(0,0)}
  function pick(k){S.ans[S.i]=k;save();draw()}
- function finish(){cleanup();clearInterval(tick);S.done=true;S.end=Date.now();LS.del();result()}
+ function finish(){S.fin=true;cleanup();clearInterval(tick);S.done=true;S.end=Date.now();LS.del();result()}
  sub.onclick=()=>{const left=S.ans.filter(a=>a<0).length;if(left&&!warn){warn=true;w.textContent="Còn "+left+" câu chưa làm. Bấm “Nộp bài” lần nữa nếu muốn nộp luôn.";w.classList.remove("hide");return}finish()};
  const key=e=>{if(S.done||!document.body.contains(bar))return removeEventListener("keydown",key);const k="abcd1234".indexOf(e.key.toLowerCase());
   if(k>=0&&!(c.mode==="p"&&S.ans[S.i]>=0))pick(k%4);else if(e.key==="ArrowRight"&&S.i<N-1)go(S.i+1);else if(e.key==="ArrowLeft"&&S.i>0)go(S.i-1)};
@@ -150,8 +157,8 @@ function result(){
  const ta=h("textarea",{readonly:true},txt),cp=h("button",{class:"pri",onclick:async()=>{try{await navigator.clipboard.writeText(txt);cp.textContent="Đã sao chép ✓"}catch(e){ta.select();cp.textContent="Hãy sao chép thủ công (Ctrl+C)"}}},"Sao chép kết quả");
  const stat=h("div",{class:"mute"});
  function send(){if(!ENDPOINT||S.cfg.mode!=="x")return;stat.textContent="Đang gửi kết quả cho giáo viên…";
-  const body=JSON.stringify({time:new Date().toISOString(),name:S.name,cls:S.cls,lessons:fmtL(S.cfg.ls),code:S.cfg.m,n:N,correct:ok,score:pts,secs:Math.round(secs),leaves:S.lv||0,leaveSecs:S.lt||0,mode:S.cfg.mode,ans:S.items.map((it,k)=>S.ans[k]<0?"-":"ABCD"[S.ans[k]]).join(""),right:S.items.map(it=>"ABCD"[it.o.findIndex(o=>o[1])]).join("")});
-  fetch(ENDPOINT,{method:"POST",mode:"no-cors",headers:{"Content-Type":"text/plain;charset=utf-8"},body}).then(()=>{stat.textContent="Đã gửi kết quả cho giáo viên ✓"}).catch(()=>{stat.textContent="Chưa gửi được, hãy kiểm tra mạng. ";stat.append(h("button",{onclick:send},"Gửi lại"))})}
+  const body=JSON.stringify({type:"result",sid:S.sid,time:new Date().toISOString(),name:S.name,cls:S.cls,lessons:fmtL(S.cfg.ls),code:S.cfg.m,n:N,correct:ok,score:pts,secs:Math.round(secs),leaves:S.lv||0,leaveSecs:S.lt||0,mode:S.cfg.mode,ans:S.items.map((it,k)=>S.ans[k]<0?"-":"ABCD"[S.ans[k]]).join(""),right:S.items.map(it=>"ABCD"[it.o.findIndex(o=>o[1])]).join("")});
+  post(body).then(()=>{stat.textContent="Đã gửi kết quả cho giáo viên ✓"}).catch(()=>{stat.textContent="Chưa gửi được, hãy kiểm tra mạng. ";stat.append(h("button",{onclick:send},"Gửi lại"))})}
  let wrongOnly=false;const list=h("div");
  function paint(){list.replaceChildren(...S.items.map((it,k)=>{const a=S.ans[k],good=a>=0&&it.o[a][1];if(wrongOnly&&good)return null;const q=it.q,ins=INS[q[1]]||[];
   return h("div",{class:"card rv "+(good?"ok":"no")},h("div",{class:"hint"},"Câu "+(k+1)+" · bài "+q[0]+" · "+(ins[1]||"")+" · "+(a<0?"chưa trả lời":good?"đúng":"sai")),
@@ -159,8 +166,52 @@ function result(){
    it.o.map((o,j)=>h("div",{class:"opt "+(o[1]?"ok":a===j?"no":"")},h("i",{},"ABCD"[j]+"."),o[0]+(a===j?"   ← bạn chọn":""))))}))}
  const f=h("button",{onclick:()=>{wrongOnly=!wrongOnly;f.textContent=wrongOnly?"Xem tất cả câu":"Chỉ xem câu sai";paint()}},"Chỉ xem câu sai");
  app.replaceChildren(h("h1",{},"Kết quả"),h("div",{class:"card"},h("div",{class:"score"},pts+"/10"),h("p",{},ok+"/"+N+" câu đúng · thời gian "+fmt(secs)+(S.name?" · "+S.name:"")),ta,h("p"),cp,stat),
-  h("div",{class:"seg"},f,h("button",{onclick:()=>{S.cfg.m=Math.floor(Math.random()*900)+100;S.items=build(S.cfg);S.ans=Array(S.items.length).fill(-1);S.i=0;S.start=Date.now();S.done=false;S.lv=0;S.lt=0;save();quiz()}},"Làm đề mới"),h("button",{onclick:()=>{S=null;setup()}},"Về trang đầu")),
+  h("div",{class:"seg"},f,h("button",{onclick:()=>{S.cfg.m=Math.floor(Math.random()*900)+100;S.items=build(S.cfg);S.ans=Array(S.items.length).fill(-1);S.i=0;S.start=Date.now();S.done=false;S.lv=0;S.lt=0;S.sid=newSid();S.fin=false;save();quiz()}},"Làm đề mới"),h("button",{onclick:()=>{S=null;setup()}},"Về trang đầu")),
   h("h2",{},"Xem lại bài làm"),list);paint();scrollTo(0,0);send();
 }
-setup();
+function teacher(){
+ clearInterval(tick);app.style.maxWidth="1100px";app.style.padding="";
+ let pin="",tab="m",data=null,timer=null,fc="",q="";
+ try{pin=sessionStorage.getItem("minna_pin")||""}catch(e){}
+ const pi=h("input",{type:"password",placeholder:"Mã PIN giáo viên",value:pin,style:"max-width:240px"}),msg=h("div",{class:"mute"}),box=h("div");
+ const stop=()=>clearInterval(timer);
+ async function load(){
+  pin=pi.value.trim();if(!ENDPOINT){msg.textContent="Trang chưa được nối với Google Sheet (ENDPOINT đang trống).";return}
+  msg.textContent="Đang tải dữ liệu…";
+  try{const d=await jsonp({pin});
+   if(!d.ok){data=null;stop();box.replaceChildren();msg.textContent=d.err==="pin"?"Sai mã PIN.":"Lỗi: "+d.err;return}
+   data=d;msg.textContent="Cập nhật lúc "+new Date().toLocaleTimeString("vi-VN");try{sessionStorage.setItem("minna_pin",pin)}catch(e){}
+   stop();timer=setInterval(()=>{if(!document.hidden)load()},10000);draw()}
+  catch(e){msg.textContent="Không tải được dữ liệu. Kiểm tra mạng và cách triển khai Apps Script."}
+ }
+ const sel=(vals,cur,on)=>{const s=h("select",{onchange:e=>on(e.target.value),style:"padding:8px;border-radius:9px;border:1px solid var(--line);background:var(--card);color:var(--ink);font:inherit"},h("option",{value:""},"Tất cả mã đề"),vals.map(v=>h("option",{value:v,selected:String(v)===String(cur)},"Mã đề "+v)));return s};
+ function mon(){
+  const now=data.now,rows=data.room.filter(r=>now-r[12]<6*3600e3).map(r=>{const age=(now-r[12])/1000;return{r,age,st:r[10]==="submitted"?"Đã nộp":age>90?"Mất tín hiệu":"Đang làm"}});
+  const codes=[...new Set(rows.map(x=>x.r[4]))],list=rows.filter(x=>!fc||String(x.r[4])===String(fc));
+  const pr={"Mất tín hiệu":0,"Đang làm":1,"Đã nộp":2};list.sort((a,b)=>pr[a.st]-pr[b.st]||b.r[8]-a.r[8]);
+  const c=k=>list.filter(x=>x.st===k).length;
+  return[h("div",{class:"row",style:"align-items:center;margin:8px 0"},h("div",{},sel(codes,fc,v=>{fc=v;draw()})),h("div",{class:"mute",style:"flex:3"},"Đang làm: "+c("Đang làm")+" · Đã nộp: "+c("Đã nộp")+" · Mất tín hiệu: "+c("Mất tín hiệu")+" (hiển thị phiên trong 6 giờ gần nhất, tự làm mới mỗi 10 giây)")),
+   h("div",{class:"sc"},h("table",{class:"tbl"},h("tr",{},["Họ tên","Lớp","Mã đề","Tiến độ","Câu hiện tại","Rời trang","Trạng thái","Cập nhật"].map(x=>h("th",{},x))),
+    list.map(({r,age,st})=>{const bad=r[8]>=3||st==="Mất tín hiệu";return h("tr",{},h("td",{class:bad?"red":""},r[1]),h("td",{},r[2]),h("td",{},r[4]),h("td",{},h("div",{class:"pb"},h("i",{style:"width:"+Math.round(100*r[6]/r[5])+"%"})),r[6]+"/"+r[5]),h("td",{},st==="Đã nộp"?"-":r[7]),h("td",{class:r[8]>=3?"red":""},r[8]+" lần ("+r[9]+" giây)"),h("td",{class:st==="Mất tín hiệu"?"red":""},st),h("td",{},Math.round(age)+" giây trước"))}))),list.length?null:h("p",{class:"mute"},"Chưa có học sinh nào đang làm bài.")]
+ }
+ function res(){
+  const all=data.results.slice().sort((a,b)=>b[0]-a[0]),codes=[...new Set(all.map(r=>r[4]))];
+  const list=all.filter(r=>(!fc||String(r[4])===String(fc))&&(!q||(r[1]+" "+r[2]).toLowerCase().includes(q.toLowerCase())));
+  const sc=list.map(r=>+r[7]),avg=sc.length?(sc.reduce((a,b)=>a+b,0)/sc.length).toFixed(2):"-";
+  const wrong=r=>{const a=String(r[12]),b=String(r[13]),o=[];for(let i=0;i<b.length;i++)if(a[i]!==b[i])o.push(i+1);return o.length>14?o.slice(0,14).join(", ")+"…":o.join(", ")};
+  const csv=()=>{const e=v=>'"'+String(v).replace(/"/g,'""')+'"',rows=[["Thời gian","Họ tên","Lớp","Bài","Mã đề","Số câu","Đúng","Điểm","Giây","Rời trang (lần)","Rời trang (giây)","Đáp án chọn","Đáp án đúng"]].concat(list.map(r=>[new Date(r[0]).toLocaleString("vi-VN"),r[1],r[2],r[3],r[4],r[5],r[6],r[7],r[8],r[9],r[10],r[12],r[13]]));
+   const a=h("a",{href:URL.createObjectURL(new Blob(["\ufeff"+rows.map(r=>r.map(e).join(",")).join("\n")],{type:"text/csv"})),download:"ket-qua-minna.csv"});document.body.append(a);a.click();a.remove()};
+  const qi=h("input",{type:"text",placeholder:"Tìm theo tên hoặc lớp",value:q,style:"max-width:220px",oninput:e=>{q=e.target.value;clearTimeout(res.t);res.t=setTimeout(()=>{draw();const i=box.querySelector("input");if(i){i.focus();i.setSelectionRange(q.length,q.length)}},400)}});
+  return[h("div",{class:"row",style:"align-items:center;margin:8px 0"},h("div",{},sel(codes,fc,v=>{fc=v;draw()})),h("div",{},qi),h("div",{class:"mute",style:"flex:3"},list.length+" bài nộp · điểm trung bình "+avg+(sc.length?" · cao nhất "+Math.max(...sc)+" · thấp nhất "+Math.min(...sc):"")),h("button",{onclick:csv},"Tải CSV")),
+   h("div",{class:"sc"},h("table",{class:"tbl"},h("tr",{},["Thời gian","Họ tên","Lớp","Bài","Mã đề","Đúng","Điểm","Thời gian làm","Rời trang","Câu sai"].map(x=>h("th",{},x))),
+    list.map(r=>h("tr",{},h("td",{},fT(r[0])),h("td",{class:r[9]>=3?"red":""},r[1]),h("td",{},r[2]),h("td",{},r[3]),h("td",{},r[4]),h("td",{},r[6]+"/"+r[5]),h("td",{},h("b",{},r[7])),h("td",{},fmt(r[8])),h("td",{class:r[9]>=3?"red":""},r[9]+" lần ("+r[10]+" giây)"),h("td",{style:"white-space:normal"},wrong(r))))))]
+ }
+ function draw(){
+  const tb=h("div",{class:"seg"},h("button",{class:tab==="m"?"on":"",onclick:()=>{tab="m";draw()}},"Giám sát phòng thi"),h("button",{class:tab==="r"?"on":"",onclick:()=>{tab="r";draw()}},"Kết quả"),h("button",{onclick:load},"Làm mới"));
+  box.replaceChildren(tb,...(tab==="m"?mon():res()))}
+ pi.onkeydown=e=>{if(e.key==="Enter")load()};
+ app.replaceChildren(h("h1",{},"Khu vực giáo viên"),h("div",{class:"card"},h("div",{class:"row",style:"align-items:center"},pi,h("button",{class:"pri",onclick:load},"Đăng nhập"),h("button",{onclick:()=>{stop();location.hash="";setup()}},"← Về trang làm bài")),msg),box);
+ if(pin)load();
+}
+location.hash.toLowerCase()==="#giaovien"?teacher():setup();
 </script></body></html>
