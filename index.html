@@ -46,6 +46,8 @@ textarea{width:100%;min-height:90px;border:1px solid var(--line);border-radius:1
 .lt{aspect-ratio:1/1;padding:0;display:flex;flex-direction:column;align-items:center;justify-content:center;border-radius:14px;line-height:1.1}
 .lt b{font-size:1.3rem}.lt small{font-size:.62rem;color:var(--mute);margin-top:3px}
 .lt.on{background:var(--grn);color:var(--ong);border-color:var(--gold);box-shadow:0 0 0 2px var(--gold) inset}.lt.on small{color:inherit;opacity:.8}
+.ex{display:flex;justify-content:space-between;align-items:center;gap:10px;width:100%;text-align:left;padding:12px 14px;margin:8px 0;border-radius:12px;line-height:1.35}
+.ex small{color:var(--mute)}.ex.on{border-color:var(--gold);box-shadow:0 0 0 2px var(--gold) inset}.pill{font-weight:800;letter-spacing:.12em;color:var(--grn);white-space:nowrap}
 .code{font-size:2rem;font-weight:800;letter-spacing:.25em;color:var(--grn)}
 .lv{color:var(--bad);font-size:.85rem;font-weight:700}
 </style></head><body>
@@ -101,10 +103,19 @@ function fromHash(){const m=location.hash.slice(1).match(/^b([\d~-]+)_n(\d+)_t(\
 function setup(){
  clearInterval(tick);app.style.maxWidth="";app.style.padding="";
  const fx=fromHash(),sv=LS.get(),hc=(location.hash.slice(1).match(/^de-([A-Za-z0-9]{3,10})$/i)||[])[1];
+ let sel=hc?hc.toUpperCase():"",items=null;
  const name=h("input",{type:"text",placeholder:"Nguyễn Văn A",value:(sv&&sv.name)||""}),cls=h("input",{type:"text",placeholder:"Lớp / Mã TTS",value:(sv&&sv.cls)||""}),
-  code=h("input",{type:"text",placeholder:"VD: K7M2P",maxlength:10,value:hc?hc.toUpperCase():"",style:"text-transform:uppercase;letter-spacing:.2em;font-weight:700;text-align:center;font-size:1.2rem"}),
-  err=h("div",{class:"warn hide"}),goBtn=h("button",{class:"pri",style:"width:100%;padding:14px;margin-top:12px;font-size:1.05rem"},"Vào làm bài");
+  code=h("input",{type:"text",placeholder:"Tự điền khi bạn chọn bài thi",maxlength:10,value:sel,style:"text-transform:uppercase;letter-spacing:.2em;font-weight:700;text-align:center;font-size:1.2rem"}),
+  lst=h("div"),err=h("div",{class:"warn hide"}),goBtn=h("button",{class:"pri",style:"width:100%;padding:14px;margin-top:12px;font-size:1.05rem"},"Vào làm bài");
  const showErr=m=>{err.textContent=m;err.classList.remove("hide")},reset=()=>{goBtn.disabled=false;goBtn.textContent="Vào làm bài"};
+ const exName=r=>r[1]||("Bài "+String(r[2]).replace(/~/g,", "));
+ function paintList(){
+  if(items===null){lst.replaceChildren(h("div",{class:"mute"},"Đang tải danh sách bài thi…"));return}
+  if(!items.length){lst.replaceChildren(h("div",{class:"mute"},"Hiện chưa có bài thi nào đang mở. Nếu giáo viên đã đưa mã bài thi, hãy nhập vào ô bên dưới."));return}
+  lst.replaceChildren(...items.map(r=>{const c=String(r[0]).toUpperCase();return h("button",{class:"ex"+(sel===c?" on":""),onclick:()=>{sel=c;code.value=c;paintList()}},
+   h("span",{},h("b",{},exName(r)),h("br"),h("small",{},"Bài "+String(r[2]).replace(/~/g,", ")+" · "+r[3]+" câu · "+(r[4]?r[4]+" phút":"không giới hạn giờ")+" · "+(r[5]==="p"?"Luyện tập":"Thi"))),h("span",{class:"pill"},c))}))}
+ async function loadList(){items=null;paintList();try{const d=await jsonp({action:"exams"});items=d.ok&&d.exams?d.exams:[]}catch(e){items=[]}paintList()}
+ code.oninput=()=>{sel=code.value.trim().toUpperCase();if(items)paintList()};
  async function go(){
   err.classList.add("hide");const nm=name.value.trim();
   if(!nm){showErr("Hãy nhập họ và tên.");return}
@@ -112,7 +123,7 @@ function setup(){
   if(fx){k=Object.assign({},fx)}
   else{
    const c=code.value.trim().toUpperCase();
-   if(!c){showErr("Hãy nhập mã bài thi do giáo viên cung cấp.");return}
+   if(!c){showErr("Hãy chọn một bài thi trong danh sách.");return}
    if(!ENDPOINT){showErr("Hệ thống chưa sẵn sàng. Hãy liên hệ giáo viên.");return}
    goBtn.disabled=true;goBtn.textContent="Đang kiểm tra…";
    try{const d=await jsonp({action:"exam",code:c});reset();
@@ -121,22 +132,25 @@ function setup(){
    catch(e){reset();showErr("Không kết nối được. Hãy kiểm tra mạng và thử lại.");return}
   }
   k.nm=k.u?nm:"";
-  const items=build(k);if(!items.length){showErr("Đề thi chưa có câu hỏi phù hợp. Hãy báo giáo viên.");return}
-  S={cfg:k,name:nm,cls:cls.value.trim(),ans:Array(items.length).fill(-1),i:0,start:Date.now(),done:false,lv:0,lt:0,sid:newSid(),items};save();quiz()
+  const its=build(k);if(!its.length){showErr("Đề thi chưa có câu hỏi phù hợp. Hãy báo giáo viên.");return}
+  S={cfg:k,name:nm,cls:cls.value.trim(),ans:Array(its.length).fill(-1),i:0,start:Date.now(),done:false,lv:0,lt:0,sid:newSid(),items:its};save();quiz()
  }
  goBtn.onclick=go;code.onkeydown=name.onkeydown=cls.onkeydown=e=>{if(e.key==="Enter")go()};
- const asg=fx?h("div",{class:"mute",style:"margin-top:10px"},h("b",{},"Bài được giao: "),"bài "+fmtL(fx.ls).replace("~",", ")+" · "+fx.n+" câu · "+(fx.t?fx.t+" phút":"không giới hạn giờ")):
-  h("div",{},h("label",{},"Mã bài thi"),code,h("div",{class:"mute",style:"margin-top:4px"},"Mã do giáo viên cung cấp."));
+ const pick=fx?h("div",{class:"mute",style:"margin-top:10px"},h("b",{},"Bài được giao: "),"bài "+fmtL(fx.ls).replace(/~/g,", ")+" · "+fx.n+" câu · "+(fx.t?fx.t+" phút":"không giới hạn giờ")):
+  h("div",{},h("label",{},"Chọn bài thi"),lst,
+   h("div",{style:"text-align:right"},h("button",{style:"border:0;background:none;color:var(--mute);padding:2px 0;font-size:.85rem",onclick:loadList},"↻ Tải lại danh sách")),
+   h("label",{},"Mã bài thi"),code);
  const tbtn=h("button",{class:"tch",onclick:()=>{location.hash="giaovien";teacher()}},"🔒 Khu vực giáo viên");
  app.replaceChildren(
   h("div",{class:"hd"},logoEl(),h("div",{class:"co"},"CÔNG TY CỔ PHẦN PHÁT TRIỂN NGUỒN NHÂN LỰC LOD")),
   h("h1",{},"Trắc nghiệm Minna no Nihongo – Sơ cấp I"),
   h("div",{style:"text-align:right"},tbtn),
-  h("div",{class:"card",style:"max-width:520px;margin:14px auto"},h("h2",{style:"margin-top:0;text-align:center"},"Vào phòng thi"),
+  h("div",{class:"card",style:"max-width:560px;margin:14px auto"},h("h2",{style:"margin-top:0;text-align:center"},"Vào phòng thi"),
    h("div",{class:"row"},h("div",{},h("label",{},"Họ và tên"),name),h("div",{},h("label",{},"Lớp / Mã TTS"),cls)),
-   h("div",{style:"margin-top:6px"},asg),err,goBtn),
+   h("div",{style:"margin-top:6px"},pick),err,goBtn),
   h("p",{class:"mute",style:"text-align:center"},ENDPOINT?"Khi nộp bài, kết quả sẽ tự động gửi cho giáo viên. Trong lúc làm bài, việc rời khỏi trang sẽ được ghi lại.":"Kết quả hiển thị ngay sau khi nộp bài."));
- if(sv&&!sv.done&&sv.cfg){const rb=h("button",{class:"pri",onclick:()=>{S=Object.assign({},sv,{items:build(sv.cfg)});quiz()}},"Tiếp tục bài đang làm dở");app.insertBefore(h("div",{class:"card",style:"max-width:520px;margin:14px auto;text-align:center"},rb),app.children[3])}
+ if(sv&&!sv.done&&sv.cfg){const rb=h("button",{class:"pri",onclick:()=>{S=Object.assign({},sv,{items:build(sv.cfg)});quiz()}},"Tiếp tục bài đang làm dở");app.insertBefore(h("div",{class:"card",style:"max-width:560px;margin:14px auto;text-align:center"},rb),app.children[3])}
+ if(!fx&&ENDPOINT)loadList();else if(!fx)paintList();
 }
 function save(){LS.set({cfg:S.cfg,name:S.name,cls:S.cls,ans:S.ans,i:S.i,start:S.start,done:S.done,lv:S.lv,lt:S.lt,sid:S.sid})}
 const fmt=s=>{s=Math.max(0,Math.round(s));return String(Math.floor(s/60)).padStart(2,"0")+":"+String(s%60).padStart(2,"0")};
@@ -197,7 +211,7 @@ function result(){
 }
 function teacher(){
  clearInterval(tick);app.style.maxWidth="1100px";app.style.padding="";
- let pin="",tab="m",data=null,timer=null,fc="",q="",es=new Set([1]),en=20,et=20,em="x",eu=false,ename="",ok2=null;
+ let pin="",tab="m",data=null,timer=null,fc="",q="",es=new Set([1]),en=20,et=20,em="x",eu=false,ename="",eshow=true,ok2=null;
  try{pin=sessionStorage.getItem("minna_pin")||""}catch(e){}
  const pi=h("input",{type:"password",placeholder:"Mã PIN giáo viên",value:pin,style:"max-width:240px"}),msg=h("div",{class:"mute"}),box=h("div");
  const stop=()=>clearInterval(timer);
@@ -241,13 +255,13 @@ function teacher(){
    nm=h("input",{type:"text",placeholder:"VD: Kiểm tra bài 1–5 – Lớp TTS1",value:ename,oninput:e=>{ename=e.target.value}});
   const ms=h("div",{class:"seg"}),pm=()=>ms.replaceChildren(...[["x","Thi (chấm khi nộp bài)"],["p","Luyện tập (hiện đúng/sai ngay)"]].map(([k,t])=>h("button",{class:em===k?"on":"",onclick:()=>{em=k;pm()}},t)));pm();
   const cfg=()=>({ls:[...es].sort((a,b)=>a-b),n:Math.max(5,Math.min(100,+nI.value||20)),t:Math.max(0,+tI.value||0),m:100+Math.floor(Math.random()*900),mode:em,u:eu});
-  const base=()=>location.href.split("#")[0];
+  const base=()=>location.href.split("#")[0],stt=async(c,s)=>{try{await jsonp({pin,action:"examstatus",code:c,st:s})}catch(e){}load()};
   const cp=async(txt,el)=>{try{await navigator.clipboard.writeText(txt);el.textContent="Đã sao chép ✓"}catch(e){el.textContent="Hãy tự sao chép: "+txt}};
   const mk=async()=>{const c=cfg();if(!c.ls.length){msg2.textContent="Hãy chọn ít nhất một bài.";return}
    if(!ENDPOINT){msg2.textContent="Chưa nối Google Sheet.";return}
    msg2.textContent="Đang tạo đề…";
    for(let k=0;k<3;k++){const code=genCode();
-    try{const d=await jsonp({pin,action:"addexam",code,name:ename.trim(),ls:fmtL(c.ls),n:c.n,t:c.t,mode:c.mode,u:c.u?1:0,m:c.m});
+    try{const d=await jsonp({pin,action:"addexam",code,name:ename.trim(),ls:fmtL(c.ls),n:c.n,t:c.t,mode:c.mode,u:c.u?1:0,m:c.m,hide:eshow?0:1});
      if(d.ok){ok2={code,link:base()+"#de-"+code};load();return}
      if(d.err!=="dup"){msg2.textContent="Không tạo được: "+(d.err==="pin"?"PIN không đúng.":d.err);return}}
     catch(e){msg2.textContent="Không kết nối được. Hãy thử lại.";return}}
@@ -264,12 +278,13 @@ function teacher(){
     h("label",{style:"text-align:center;margin-top:16px"},"Chọn bài"),quick,g.el,sum,
     h("div",{class:"row",style:"max-width:480px;margin:10px auto 0"},h("div",{},h("label",{},"Số câu"),nI),h("div",{},h("label",{},"Thời gian (phút, 0 = không giới hạn)"),tI)),
     h("div",{style:"max-width:480px;margin:6px auto 0"},h("label",{},"Chế độ"),ms,
-     h("label",{style:"font-weight:400;margin-top:12px"},h("input",{type:"checkbox",checked:eu,onchange:e=>{eu=e.target.checked}})," Đề riêng cho từng học sinh (theo họ tên, chống quay cóp)")),
+     h("label",{style:"font-weight:400;margin-top:12px"},h("input",{type:"checkbox",checked:eu,onchange:e=>{eu=e.target.checked}})," Đề riêng cho từng học sinh (theo họ tên, chống quay cóp)"),
+     h("label",{style:"font-weight:400;margin-top:8px"},h("input",{type:"checkbox",checked:eshow,onchange:e=>{eshow=e.target.checked}})," Hiện trên trang chủ để học sinh tự chọn (bỏ tích nếu chỉ giao bằng mã hoặc link)")),
     h("div",{class:"seg",style:"justify-content:center;margin-top:16px"},h("button",{class:"pri",onclick:mk},"Tạo đề và lấy mã"),h("button",{onclick:trial},"Làm thử"),h("button",{onclick:quickLink},"Tạo link giao nhanh")),msg2),
    okBox,
    h("div",{class:"card"},h("h2",{style:"margin-top:0"},"Đề đã tạo"),rows.length?h("div",{class:"sc"},h("table",{class:"tbl"},h("tr",{},["Mã","Tên đề","Bài","Số câu","Thời gian","Chế độ","Trạng thái","Thao tác"].map(x=>h("th",{},x))),
-    rows.map(r=>h("tr",{},h("td",{},h("b",{style:"letter-spacing:.1em"},r[0])),h("td",{},r[1]),h("td",{},r[2]),h("td",{},r[3]),h("td",{},r[4]?r[4]+" phút":"Không giới hạn"),h("td",{},(r[5]==="p"?"Luyện tập":"Thi")+(r[6]?" · đề riêng":"")),h("td",{class:r[8]==="Mở"?"":"red"},r[8]),
-     h("td",{},(()=>{const b=h("button",{},"Sao chép link");b.onclick=()=>cp(base()+"#de-"+r[0],b);return b})()," ",h("button",{onclick:async()=>{try{await jsonp({pin,action:"examstatus",code:r[0],open:r[8]==="Mở"?0:1})}catch(e){}load()}},r[8]==="Mở"?"Đóng đề":"Mở đề")))))):h("p",{class:"mute"},"Chưa có đề nào."))]
+    rows.map(r=>h("tr",{},h("td",{},h("b",{style:"letter-spacing:.1em"},r[0])),h("td",{},r[1]),h("td",{},r[2]),h("td",{},r[3]),h("td",{},r[4]?r[4]+" phút":"Không giới hạn"),h("td",{},(r[5]==="p"?"Luyện tập":"Thi")+(r[6]?" · đề riêng":"")),h("td",{class:r[8]==="Đóng"?"red":""},r[8]==="Mở"?"Mở · hiện trên trang chủ":r[8]==="Ẩn"?"Mở · ẩn khỏi trang chủ":r[8]),
+     h("td",{},(()=>{const b=h("button",{},"Sao chép link");b.onclick=()=>cp(base()+"#de-"+r[0],b);return b})()," ",r[8]==="Mở"?h("button",{onclick:()=>stt(r[0],"Ẩn")},"Ẩn khỏi trang chủ"):r[8]==="Ẩn"?h("button",{onclick:()=>stt(r[0],"Mở")},"Hiện trên trang chủ"):h("button",{onclick:()=>stt(r[0],"Mở")},"Mở đề")," ",r[8]!=="Đóng"?h("button",{onclick:()=>stt(r[0],"Đóng")},"Đóng đề"):null))))):h("p",{class:"mute"},"Chưa có đề nào."))]
  }
  function pf(){
   const a=h("input",{type:"password",placeholder:"Mã PIN mới (ít nhất 4 ký tự)"}),b=h("input",{type:"password",placeholder:"Nhập lại mã PIN mới"}),m=h("div",{class:"mute",style:"margin-top:8px"});
