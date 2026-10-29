@@ -40,7 +40,7 @@ button:disabled{opacity:.45;cursor:default}
 .rv{border-left:5px solid var(--line)}.rv.ok{border-left-color:var(--ok)}.rv.no{border-left-color:var(--bad)}
 textarea{width:100%;min-height:90px;border:1px solid var(--line);border-radius:10px;background:var(--bg);color:var(--ink);font:inherit;padding:8px}
 .warn{background:var(--badbg);border:1px solid var(--bad);border-radius:10px;padding:8px 12px;margin:8px 0}
-.hide{display:none!important}.stem,.opt{-webkit-user-select:none;user-select:none}.tbl{width:100%;border-collapse:collapse;font-size:.92rem}.tbl th,.tbl td{border-bottom:1px solid var(--line);padding:6px 8px;text-align:left;white-space:nowrap}.tbl th{color:var(--mute);font-weight:600}.sc{overflow-x:auto}.pb{height:8px;min-width:80px;background:var(--line);border-radius:4px}.pb i{display:block;height:100%;background:var(--acc);border-radius:4px}.red{color:var(--bad);font-weight:700}.lv{color:var(--bad);font-size:.85rem;font-weight:700}
+.hide{display:none!important}.stem,.opt{-webkit-user-select:none;user-select:none}.tbl{width:100%;border-collapse:collapse;font-size:.92rem}.tbl th,.tbl td{border-bottom:1px solid var(--line);padding:6px 8px;text-align:left;white-space:nowrap}.tbl th{color:var(--mute);font-weight:600}.sc{overflow-x:auto}.pb{height:8px;min-width:80px;background:var(--line);border-radius:4px}.pb i{display:block;height:100%;background:var(--acc);border-radius:4px}.red{color:var(--bad);font-weight:700}.tch{background:#1a73e8;color:#fff;border-color:#1a73e8;font-weight:700;width:100%;margin:10px 0 4px;padding:12px;font-size:1.05rem}.lv{color:var(--bad);font-size:.85rem;font-weight:700}
 </style></head><body>
 <main id="app"></main>
 <script>
@@ -100,6 +100,7 @@ function setup(){
   h("p",{class:"mute"},"Chọn bài, số câu, thời gian, mã đề ở trên rồi bấm nút bên dưới. Dán phần mã vào cuối link trang này gửi cho học sinh để các em có cùng một đề."),
   h("button",{onclick:()=>{link.value="#"+tok(cfg());link.classList.remove("hide")}},"Tạo mã giao bài"),link);
  app.replaceChildren(h("h1",{},"Trắc nghiệm Minna no Nihongo – Sơ cấp I"),h("div",{class:"mute"},"Công ty CP Phát triển Nguồn nhân lực LOD"),
+  h("button",{class:"tch",onclick:()=>{location.hash="giaovien";teacher()}},"Khu vực giáo viên"),
   h("div",{class:"card"},h("div",{class:"row"},h("div",{},h("label",{},"Họ và tên"),name),h("div",{},h("label",{},"Lớp / Mã TTS"),cls))),
   fx?h("div",{class:"card"},h("b",{},"Bài được giao: "),"bài "+fmtL(fx.ls).replace("~",", ")+" · "+fx.n+" câu · "+(fx.t?fx.t+" phút":"không giới hạn giờ")+" · mã đề "+fx.m+" · "+(fx.mode==="p"?"luyện tập":"thi")):null,
   h("div",{class:"card"+(fx?" hide":"")},h("h2",{},"1. Chọn bài"),
@@ -107,8 +108,7 @@ function setup(){
    h("h2",{},"2. Thiết lập"),h("div",{class:"row"},h("div",{},h("label",{},"Số câu"),nIn),h("div",{},h("label",{},"Thời gian (phút, 0 = không giới hạn)"),tIn),h("div",{},h("label",{},"Mã đề (cùng mã = cùng đề)"),mIn)),
    h("label",{},"Chế độ"),mseg,h("label",{style:"font-weight:400;margin-top:14px"},h("input",{type:"checkbox",checked:uniq,onchange:e=>{uniq=e.target.checked}})," Đề riêng cho từng học sinh (theo họ tên, chống quay cóp)")),
   err,h("button",{class:"pri",style:"width:100%;padding:14px",onclick:start},"Bắt đầu làm bài"),adv,
-  h("p",{class:"mute"},ENDPOINT?"Khi nộp bài, kết quả sẽ tự động gửi cho giáo viên. Trong lúc làm bài, việc rời khỏi trang sẽ được ghi lại.":"Kết quả hiển thị ngay sau khi nộp bài. Hãy bấm “Sao chép kết quả” để gửi cho giáo viên."),
-  h("p",{class:"mute",style:"text-align:center"},h("a",{href:"#giaovien",style:"color:inherit",onclick:e=>{e.preventDefault();location.hash="giaovien";teacher()}},"Khu vực giáo viên")));
+  h("p",{class:"mute"},ENDPOINT?"Khi nộp bài, kết quả sẽ tự động gửi cho giáo viên. Trong lúc làm bài, việc rời khỏi trang sẽ được ghi lại.":"Kết quả hiển thị ngay sau khi nộp bài. Hãy bấm “Sao chép kết quả” để gửi cho giáo viên."));
  paint();pm();
  if(sv&&!sv.done&&sv.cfg){const b=h("button",{class:"pri",onclick:()=>{S=Object.assign({},sv,{items:build(sv.cfg)});quiz()}},"Tiếp tục bài đang làm dở");app.insertBefore(h("div",{class:"card"},b),app.children[2])}
 }
